@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# This is a gitolite VREF hook designed to let users manipulate branches so
+# long as the name of those branches is prefixed with a pattern defined in the
+# script. The patterns defined are artifacts of the workflow and roles used by
+# the Computer Action Team at Portland State University.
+
+VREF=$7
+ARGUMENT=$8
+
+fail()
+{
+  echo $VREF $1
+  exit 1
+}
+
+# If we have no basis on which to determine username, fail.
+if [ -z "$GL_USER" ]; then fail "GL_USER not provided"; fi
+
+# Usernames are the part before the first "@" sign. If there is no "@" sign,
+# then the username is the full GL_USER string.
+USERNAME=`echo $GL_USER | sed 's/@.*//'`
+if [ -z "$USERNAME" ]; then fail "Unable to set USERNAME"; fi
+
+# The branch name is the part that comes after refs/heads.
+BRANCH=`echo $1 | sed -n 's/\(refs\/heads\/\)\(.*\)/\2/p'`
+if [ -z "$BRANCH" ]; then fail "$1 is not a valid branch"; fi
+
+# Switch based on the first argument
+case $ARGUMENT in
+  DOG)
+    if echo "$BRANCH" | egrep -v "^$USERNAME/"; then
+      fail "You have push access to $USERNAME/* branches"
+    fi
+    ;;
+  DROOG)
+    if echo "$BRANCH" | egrep -v "^(test_|t_|${USERNAME}(/|_))"; then
+      fail "You have push access to $USERNAME/, ${USERNAME}_, test_, and t_ branches"
+    fi
+    ;;
+  *)
+    fail "Unexpected argument $8"
+    ;;
+esac
