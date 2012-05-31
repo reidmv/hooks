@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# This is a gitolite VREF hook designed to let users manipulate branches so
+# long as the name of those branches is prefixed with their username and a
+# slash. e.g. the user "marut" can manipulate the "marut/foobar" branch, the
+# "marut/draegons/spawn" branch, but not the "master" or "production"
+# branches (at least as far as this VREF is concerned anyway).
+#
+
+fail()
+{
+        echo VREF/USERNAME/BRANCH
+        exit 1
+}
+
+# If we have no basis on which to determine username, fail.
+if [ -z "$GL_USER" ]; then fail; fi
+
+# Usernames are the part before the first "@" sign. If there is no "@" sign,
+# then the username is the full GL_USER string.
+USERNAME=`echo $GL_USER | sed 's/@.*//'`
+if [ -z "$USERNAME" ]; then fail; fi
+
+# The branch name is the part that comes after refs/heads.
+BRANCH=`echo $1 | sed 's/\(refs\/heads\/\)\(.*\)/\2/'`
+if [ -z "$BRANCH" ]; then fail; fi
+
+# Fail if the branch isn't under USERNAME/.
+if echo "$BRANCH" | egrep -v "^$USERNAME/"; then fail; fi
